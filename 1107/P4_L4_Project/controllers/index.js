@@ -14,44 +14,78 @@ const checkController = (req, res) => {
     const title = userInput.title
     const content = userInput.content
 
+    console.log(userInput)
     // Check if ther is query
-    let hasQuery = false
+    let hasValidQuery = false
     if (title !== undefined || content !== undefined) {
-        hasQuery = true
+        hasValidQuery = true
     }
     // Case for check All
-    if (!hasQuery) {
+    if (!hasValidQuery) {
         knex('notes')
-        .join('authors', 'notes.id', '=', 'authors.id')
-        .select('title', 'content', 'name', 'notes.created_at', 'updated_at')
+        .join('authors', 'notes.author_id', '=', 'authors.id')
+        .select('notes.id', "title", "content", knex.ref("notes.created_at").as('note_created_at'), "updated_at", "name", knex.ref("authors.created_at").as('author_created_at'), "modified_at")
         .then((result) => {
-            console.log(result)
-            return res.json(result)
+            if(result.length !== 0 ) {
+                console.log(result)
+                return res.json(result)
+            } else if (userInput.keys() === 0) {
+                console.log("There is no data in the notes table")
+                return res.send("There is no data in the notes table")
+            } else {
+                console.log("Invaild query :There is no such query")
+                return res.send("Invalid query : There is no such query")
+            }
+        }).catch((err) => {
+            console.log("errors when check All notes" + err)
+            return res.send("errors when check All notes" + err)
         })
     // Case for check by title 
     } else if (title !== undefined) {
         knex('notes').where({'title': title}).select()
         .then((result) => {
-            console.log(result)
-            return res.json(result)
+            if(result.length !== 0) {
+                console.log(result)
+                return res.json(result)
+            } else {
+                console.log("There is no note of such title")
+                return res.send("There is no note of such title")
+            }
+        }).catch((err) => {
+            console.log("errors when check by title" + err)
+            return res.send("errors when check by title" + err)
         })
     // Case for check by content 
     } else if (content !== undefined) {
         knex('notes').where({'content': content}).select()
         .then((result) => {
-            console.log(result)
-            return res.json(result)
+            if(result.length !== 0) {
+                console.log(result)
+                return res.json(result)
+            } else {
+                console.log("There is no note of such content")
+                return res.send("There is no note of such content")
+            }
+        }).catch((err) => {
+            console.log("errors when check by title" + err)
+            return res.send("errors when check by title" + err)
         })
-    }
+    } 
     }
 
 // POST /notes
 const createController =  (req, res) => {
     const userInput = req.body
-    knex('notes').insert(userInput)
+    const title = userInput.title
+    const content = userInput.content
+    const author_id = userInput.author_id
+    knex('notes').insert({"title": title, "content": content, "author_id": author_id})
     .then((result) => {
         console.log("Post notes successfully")
         return res.send("Post notes successfully")
+    }).catch((err) => {
+        console.log("errors when create notes" + err)
+        return res.send("errors when create notes" + err)
     })
 }
 
@@ -59,11 +93,16 @@ const createController =  (req, res) => {
 const updateController = (req, res) => {
     const noteId = req.params.noteId
     const userInput = req.body
-    knex('notes').where({'id': noteId}).update(
-        {'title': userInput.title, 'content': userInput.content, 'updated_at': new Date()}
+    knex('notes')
+    .where({'id': noteId})
+    .update(
+        {'title': userInput.title, 'content': userInput.content, 'author_id': userInput.author_id, 'updated_at': new Date()}
     ).then((result) => {
         console.log("Update notes successfully")
         return res.send("Update notes successfully")
+    }).catch((err) => {
+        console.log("errors when updating notes" + err)
+        return res.send("errors when updating notes" + err)
     })
 }
 
@@ -71,12 +110,15 @@ const updateController = (req, res) => {
 const checkItemContoller = (req, res) => {
     const noteId = req.params.noteId
     knex('notes')
-    .join('authors', 'notes.id', '=', 'authors.id')
+    .join('authors', 'notes.author_id', '=', 'authors.id')
     .where({'notes.id': noteId})
-    .select()
+    .select('notes.id', "title", "content", knex.ref("notes.created_at").as('note_created_at'), "updated_at", "name", knex.ref("authors.created_at").as('author_created_at'), "modified_at")
     .then((result) => {
         console.log(result)
         return res.json(result)
+    }).catch((err) => {
+        console.log("errors when checking Item notes" + err)
+        return res.send("errors when checking Item notes" + err)
     })
 }
 
@@ -87,6 +129,9 @@ const deleteController = (req, res) => {
     .then((result) => {
         console.log("Delete notes successfully")
         return res.send("Delete notes successfully")
+    }).catch((err) => {
+        console.log("errors when deleting notes" + err)
+        return res.send("errors when deleting notes" + err)
     })
 }
 
@@ -97,6 +142,9 @@ const checkAuthorsController = (req, res) => {
     .then((result) => {
         console.log(result)
         return res.json(result)
+    }).catch((err) => {
+        console.log("errors when checking authors" + err)
+        return res.send("errors when checking authors" + err)
     })
 }
 
@@ -107,8 +155,12 @@ const createAuthorsController =  (req, res) => {
     .then((result) => {
         console.log("Post authors successfully")
         return res.send("Post authors successfully")
+    }).catch((err) => {
+        console.log("errors when creating authors" + err)
+        return res.send("errors when creeting authors" + err)
     })
 }
+
 
 // PUT /authors/:authorId
 const updateAuthorsController = (req, res) => {
@@ -119,8 +171,12 @@ const updateAuthorsController = (req, res) => {
     ).then((result) => {
         console.log("Update authors successfully")
         return res.send("Update authors successfully")
+    }).catch((err) => {
+        console.log("errors when updating authors" + err)
+        return res.send("errors when updating authors" + err)
     })
 }
+
 
 // GET /authors/:authorId
 const checkItemAuthorsContoller = (req, res) => {
@@ -129,6 +185,9 @@ const checkItemAuthorsContoller = (req, res) => {
     .then((result) => {
         console.log(result)
         return res.json(result)
+    }).catch((err) => {
+        console.log("errors when checking one of the authors" + err)
+        return res.send("errors when checking one of the authors" + err)
     })
 }
 
@@ -139,6 +198,9 @@ const deleteAuthorsController = (req, res) => {
     .then((result) => {
         console.log("Delete authors successfully")
         return res.send("Delete authors successfully")
+    }).catch((err) => {
+        console.log("errors when deleting authors" + err)
+        return res.send("errors when deleting authors" + err)
     })
 }
 
